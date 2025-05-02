@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contador de Cartas Blackjack</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+      background-color: #111;
+      color: #fff;
+      transition: background-color 0.5s;
+    }
+    .grupo {
+      margin: 10px 0;
+    }
+    button {
+      margin: 3px;
+      padding: 10px 14px;
+      font-size: 18px;
+    }
+    .resultado {
+      margin-top: 20px;
+      font-size: 20px;
+    }
+    #historial {
+      position: absolute;
+      left: 10px;
+      top: 20px;
+      width: 120px;
+      background: #222;
+      border: 1px solid #444;
+      padding: 10px;
+      font-size: 16px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .indicador {
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .positivo {
+      color: #4caf50;
+    }
+    .negativo {
+      color: #f44336;
+    }
+  </style>
+</head>
+<body>
+  <div id="historial">
+    <strong>Historial:</strong>
+    <ul id="listaHistorial"></ul>
+  </div>
+
+  <h1>Contador Blackjack</h1>
+
+  <p>Barajas en el zapato:
+    <input type="number" id="mazos" value="6" min="1" max="8" />
+  </p>
+
+  <p>Penetración del zapato (% jugado antes de barajar): 
+    <input type="range" id="penetracion" min="50" max="80" value="60" oninput="mostrarPenetracion(this.value)" />
+    <span id="penetracionValor">60%</span>
+  </p>
+
+  <div class="grupo">
+    <strong>Cartas Bajas (2–6):</strong><br/>
+    <button onclick="registrarCarta(2)">2</button>
+    <button onclick="registrarCarta(3)">3</button>
+    <button onclick="registrarCarta(4)">4</button>
+    <button onclick="registrarCarta(5)">5</button>
+    <button onclick="registrarCarta(6)">6</button>
+  </div>
+
+  <div class="grupo">
+    <strong>Cartas Neutras (7–9):</strong><br/>
+    <button onclick="registrarCarta(7)">7</button>
+    <button onclick="registrarCarta(8)">8</button>
+    <button onclick="registrarCarta(9)">9</button>
+  </div>
+
+  <div class="grupo">
+    <strong>Cartas Altas (10, J, Q, K, A):</strong><br/>
+    <button onclick="registrarCarta(10)">10</button>
+    <button onclick="registrarCarta('J')">J</button>
+    <button onclick="registrarCarta('Q')">Q</button>
+    <button onclick="registrarCarta('K')">K</button>
+    <button onclick="registrarCarta('A')">A</button>
+  </div>
+
+  <div class="resultado" id="resultado"></div>
+
+  <button onclick="resetear()">Resetear</button>
+
+  <script>
+    let runningCount = 0;
+    let cartasVistas = 0;
+    let historial = [];
+
+    function mostrarPenetracion(valor) {
+      document.getElementById("penetracionValor").textContent = valor + "%";
+      actualizar();
+    }
+
+    function registrarCarta(carta) {
+      historial.push(carta);
+      contarCarta(carta);
+      actualizar();
+    }
+
+    function contarCarta(carta) {
+      cartasVistas++;
+      if ([2, 3, 4, 5, 6].includes(carta)) runningCount += 1;
+      else if ([10, 'J', 'Q', 'K', 'A'].includes(carta)) runningCount -= 1;
+    }
+
+    function actualizar() {
+      const mazos = parseFloat(document.getElementById("mazos").value);
+      const penetracion = parseFloat(document.getElementById("penetracion").value);
+      const cartasTotales = mazos * 52;
+      const cartasJugables = cartasTotales * (penetracion / 100);
+      const barajasRestantes = Math.max((cartasJugables - cartasVistas) / 52, 0.1);
+      const trueCount = runningCount / barajasRestantes;
+
+      const ev = 0.5 * trueCount - 0.5;
+      const probabilidad = 44.0 + ev;
+
+      if (trueCount <= 0) {
+        document.body.style.backgroundColor = '#111';
+      } else if (trueCount <= 2) {
+        document.body.style.backgroundColor = '#004488';
+      } else {
+        document.body.style.backgroundColor = '#004400';
+      }
+
+      let recomendacion = "Apuesta mínima";
+      if (trueCount >= 2) recomendacion = "¡Sube la apuesta!";
+      else if (trueCount > 0) recomendacion = "Apuesta media";
+
+      let indicador = ev >= 0
+        ? `<p class="indicador positivo">Ventaja del jugador</p>`
+        : `<p class="indicador negativo">Ventaja del casino</p>`;
+
+      document.getElementById("resultado").innerHTML = `
+        <p>Cartas vistas: ${cartasVistas}</p>
+        <p>Running Count: ${runningCount}</p>
+        <p>True Count: ${trueCount.toFixed(2)}</p>
+        <p>Probabilidad estimada de ganar: ${probabilidad.toFixed(1)}%</p>
+        <p>Ventaja esperada: ${ev.toFixed(1)}%</p>
+        <p>Recomendación: ${recomendacion}</p>
+        ${indicador}
+      `;
+
+      const listaHistorial = document.getElementById("listaHistorial");
+      listaHistorial.innerHTML = historial.slice().reverse().map(c => {
+        let color = 'white';
+        if ([2, 3, 4, 5, 6].includes(c)) color = 'turquoise';
+        else if ([10, 'J', 'Q', 'K', 'A'].includes(c)) color = 'red';
+        return `<li style="color:${color}">${c}</li>`;
+      }).join('');
+    }
+
+    function resetear() {
+      runningCount = 0;
+      cartasVistas = 0;
+      historial = [];
+      document.body.style.backgroundColor = '#111';
+      actualizar();
+    }
+
+    document.addEventListener('keydown', e => {
+      const key = e.key.toUpperCase();
+      if (key >= '2' && key <= '6') registrarCarta(Number(key));
+      else if (['7', '8', '9'].includes(key)) registrarCarta(Number(key));
+      else if (key === '0') registrarCarta(10);
+      else if (['J', 'Q', 'K', 'A'].includes(key)) registrarCarta(key);
+      else if (e.code === 'Space') resetear();
+      else if (e.key === 'Backspace') {
+        const cartaEliminada = historial.pop();
+        if (cartaEliminada !== undefined) {
+          cartasVistas--;
+          if ([2, 3, 4, 5, 6].includes(cartaEliminada)) runningCount -= 1;
+          else if ([10, 'J', 'Q', 'K', 'A'].includes(cartaEliminada)) runningCount += 1;
+          actualizar();
+        }
+      }
+    });
+
+    actualizar();
+  </script>
+</body>
+</html>
